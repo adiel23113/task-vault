@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production']).default('development'),
+    LOG_LEVEL: z.enum(['fatal','warn','info','error','debug','trace']).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
