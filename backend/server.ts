@@ -1,5 +1,6 @@
 import {logger} from "./src/utils/logger.js";
-import type {Server} from 'node:http'
+import type {Server} from 'node:http';
+import { disconnectDb } from './src/config/db.js';
 const shutdown_timeout = 10_000
 let isShuttingDown = false
 let server: Server | null = null
@@ -16,12 +17,19 @@ const shutdown = async (signal: string): Promise<void> => {
     try {
         if (server) {
             server.closeAllConnections()
+            await new Promise<void>((resolve, reject) => {
+                server!.close(err => (err ? reject(err) : resolve()))
+            })
+            logger.info('http server closed')
         }
+        await disconnectDb()
+        process.exit(0)
+
     } catch (err) {
-        console.error()
+        logger.error({err}, 'error during shutdown cleanup')
+        process.exit(1)
         }
     }
-
 
 
 
