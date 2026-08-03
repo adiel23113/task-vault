@@ -7,6 +7,7 @@ import { app } from './src/app.js';
 
 
 const shutdown_timeout = 10_000
+const keepAlive_timeout = 65_000
 const PORT = Number(process.env.PORT) || 3000;
 let isShuttingDown = false
 let server: Server | null = null
@@ -53,11 +54,25 @@ const startServer = async(): Promise<void> => {
         logger.info({
             port: env.PORT,
             env: env.NODE_ENV,
-            pid:process.pid,
-            node:process.version,
-        },'server started')
-        logger.info({url:`http://localhost:${env.PORT}/api/v1`})
+            pid: process.pid,
+            node: process.version,
+        }, 'server started')
+        logger.info({url: `http://localhost:${env.PORT}/api/v1`})
     })
+
+    server.keepAliveTimeout = keepAlive_timeout;
+    server.headersTimeout = keepAlive_timeout + 5_000;
+
+    server.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+            logger.fatal({port: env.PORT}, `port ${env.PORT} is already in use`);
+        } else if (err.code === 'EACCES') {
+            logger.fatal({port: env.PORT}, `port ${env.PORT} requires elevated privileges`);
+        } else {
+            logger.fatal({err}, 'server encountered a fatal error');
+        }
+        process.exit(1);
+    });
 }
 
 try {
