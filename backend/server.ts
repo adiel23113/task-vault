@@ -43,5 +43,7 @@ process.once('uncaughtException', (err: Error) => {
     logger.fatal({err}, 'uncaught exception shutdown')
     shutdown('uncaughtException')
 })
+cosnt startServer = async (): Promise<void> => {
 
+}
 
