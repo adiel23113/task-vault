@@ -13,5 +13,9 @@ if (!parsed.success) {
     console.error(JSON.stringify(z.treeifyError(parsed.error), null, 2));
     process.exit(1);
 }
-export type Env = z.infer<typeof envSchema>;
+type parsedEnv = z.infer<typeof envSchema>
+
+export type Env = Readonly<parsedEnv & {
+    readonly isDevelopment: boolean;
+}>
 export const env: Env = Object.freeze(parsed.data);
