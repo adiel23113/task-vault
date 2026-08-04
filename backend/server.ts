@@ -4,13 +4,14 @@ import type {Server} from 'node:http';
 import {connectDb, disconnectDb} from './src/config/db.js';
 import {env} from "./src/config/env.js";
 import { app } from './src/app.js';
+import {createServer} from "node:net";
 
 
 const shutdown_timeout = 10_000
 const keepAlive_timeout = 65_000
 const PORT = Number(process.env.PORT) || 3000;
 let isShuttingDown = false
-let server: Server | null = null
+let server: ReturnType<typeof createServer>| null = null;
 
 const shutdown = async (signal: string): Promise<void> => {
     if (isShuttingDown) return;
@@ -50,17 +51,7 @@ process.once('uncaughtException', (err: Error) => {
 
 const startServer = async(): Promise<void> => {
     await connectDb()
-    server = app.listen(env.PORT, () => {
-        logger.info({
-            port: env.PORT,
-            env: env.NODE_ENV,
-            pid: process.pid,
-            node: process.version,
-        }, 'server started')
-        if(env.isDevelopment){
-            logger.info({url: `http://localhost:${env.PORT}/api/v1`})
-        }
-    })
+   const httpServer = createServer(app)
 
     server.keepAliveTimeout = keepAlive_timeout;
     server.headersTimeout = keepAlive_timeout + 5_000;
