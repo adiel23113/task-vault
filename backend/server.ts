@@ -1,15 +1,16 @@
 
 import {logger} from "./src/utils/logger.js";
-import type {Server} from 'node:http';
+import {createServer} from 'node:http';
 import {connectDb, disconnectDb} from './src/config/db.js';
 import {env} from "./src/config/env.js";
 import { app } from './src/app.js';
-import {createServer} from "node:net";
+
 
 
 const shutdown_timeout = 10_000
 const keepAlive_timeout = 65_000
-const PORT = Number(process.env.PORT) || 3000;
+const request_timeout = 30_000
+const headers_timeout = keepAlive_timeout + 5_000
 let isShuttingDown = false
 let server: ReturnType<typeof createServer>| null = null;
 
@@ -53,10 +54,11 @@ const startServer = async(): Promise<void> => {
     await connectDb()
    const httpServer = createServer(app)
 
-    server.keepAliveTimeout = keepAlive_timeout;
-    server.headersTimeout = keepAlive_timeout + 5_000;
+    httpServer.keepAliveTimeout = keepAlive_timeout;
+    httpServer.headersTimeout = headers_timeout
+    httpServer.requestTimeout = request_timeout
 
-    server.on('error', (err: NodeJS.ErrnoException) => {
+    httpServer.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
             logger.fatal({port: env.PORT}, `port ${env.PORT} is already in use`);
         } else if (err.code === 'EACCES') {
