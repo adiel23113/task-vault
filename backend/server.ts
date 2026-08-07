@@ -54,6 +54,13 @@ process.once('uncaughtException', (err: Error) => {
     void shutdown('uncaughtException')
 })
 
+const attachProcessHandlers = (): void => {
+    const onFatal = (reason: string, level: 'fatal' | 'error') =>
+        (err: unknown): void => {
+            logger[level]({err}, `${reason} - initiating shutdown`)
+        }
+}
+
 const startServer = async(): Promise<void> => {
     await connectDb()
    const httpServer = createServer(app)
