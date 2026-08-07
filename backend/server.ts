@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import {connectDb, disconnectDb} from './src/config/db.js';
 import {env} from "./src/config/env.js";
 import { app } from './src/app.js';
+import {promise} from "zod/v3";
 
 const listen_errors: Readonly<Record<string, string>> = {
     EADDRINUSE: 'is already in use',
@@ -67,7 +68,10 @@ const startServer = async(): Promise<void> => {
         logger.fatal({err, ...(listenError && {port: env.PORT})}, listenError ? `port ${env.PORT}
          ${listenError}` : 'server encountered a fatal error')
 
-    });
+    })
+    await new Promise<void>(resolve => {
+        httpServer.listen(env.PORT, resolve)
+    })
 }
 
 try {
