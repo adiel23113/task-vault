@@ -47,6 +47,7 @@ const attachProcessHandlers = (): void => {
 const startServer = async(): Promise<void> => {
     await connectDb()
    const httpServer = createServer(app)
+     server = httpServer
 
     httpServer.keepAliveTimeout = keepAlive_timeout;
     httpServer.headersTimeout = headers_timeout
