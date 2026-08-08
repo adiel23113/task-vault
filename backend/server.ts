@@ -18,41 +18,15 @@ const headers_timeout = keepAlive_timeout + 5_000
 let isShuttingDown = false
 let server: ReturnType<typeof createServer>| null = null;
 
-const shutdown = async (signal: string): Promise<void> => {
-    if (isShuttingDown) return;
-    isShuttingDown = true;
-    logger.info({signal}, 'shutting down gracefully')
-    const forceTimer = setTimeout(() => {
-        logger.error({timeOut: shutdown_timeout}, 'graceful shutdown timed out')
-        process.exit(1)
-    }, shutdown_timeout)
-    forceTimer.unref()
-    try {
-        if (server) {
-            server.closeAllConnections()
-            await new Promise<void>((resolve, reject) => {
-                server!.close(err => (err ? reject(err) : resolve()))
-            })
-            logger.info('http server closed')
-        }
-        await disconnectDb()
-        process.exit(0)
-
-    } catch (err) {
-        logger.error({err}, 'error during shutdown cleanup')
-        process.exit(1)
-    }
+const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
+    if(isShuttingDown) return
+    isShuttingDown = true
+    logger.info({reason,exitCode},'shutting down gracefully')
+    const forceTimer = setTimeout(()=> {
+    logger.error({timeOut:shutdown_timeout},'graceful shutdown time out,forcing exit')
+        server?.closeAllConnections()
+    },)
 }
-
-process.once('unhandledRejection', (reason: unknown) => {
-    logger.error({err: reason}, 'unhandled rejection shutdown')
-    void shutdown('unhandledRejection')
-})
-
-process.once('uncaughtException', (err: Error) => {
-    logger.fatal({err}, 'uncaught exception shutdown')
-    void shutdown('uncaughtException')
-})
 
 const attachProcessHandlers = (): void => {
     const onFatal = (reason: string, level: 'fatal' | 'error') =>
