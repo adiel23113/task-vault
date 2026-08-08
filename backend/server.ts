@@ -5,16 +5,20 @@ import {connectDb, disconnectDb} from './src/config/db.js';
 import {env} from "./src/config/env.js";
 import { app } from './src/app.js';
 import {promise} from "zod/v3";
+import delay from 'node:timers/promises'
+
 
 const listen_errors: Readonly<Record<string, string>> = {
     EADDRINUSE: 'is already in use',
     ACCESS: 'requires elevated privileges'
 }
 
-const shutdown_timeout = 10_000
+const shutdown_timeout = 15_000
 const keepAlive_timeout = 65_000
 const request_timeout = 30_000
 const headers_timeout = keepAlive_timeout + 5_000
+const drain_delay = env.isProduction?5_000:0
+
 let isShuttingDown = false
 let server: ReturnType<typeof createServer>| null = null;
 
@@ -22,10 +26,16 @@ const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
     if(isShuttingDown) return
     isShuttingDown = true
     logger.info({reason,exitCode},'shutting down gracefully')
+
     const forceTimer = setTimeout(()=> {
     logger.error({timeOut:shutdown_timeout},'graceful shutdown time out,forcing exit')
         server?.closeAllConnections()
-    },)
+    },shutdown_timeout)
+    forceTimer.unref()
+    if (exitCode === 0 && drain_delay > 0) {
+        logger.info({drainDelay: drain_delay}, 'draining before closinf listener')
+        await delay(drain_delay)
+    }
 }
 
 const attachProcessHandlers = (): void => {
