@@ -59,6 +59,15 @@ const attachProcessHandlers = (): void => {
         (err: unknown): void => {
             logger[level]({err}, `${reason} - initiating shutdown`)
         }
+    process.on('uncaughtException', onFatal('uncaughtException', 'fatal'))
+    process.on('unhandledRejection', onFatal('unhandledRejection', 'error'))
+
+    const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT', 'SIGQUIT']
+    for (const signal of signals) {
+        process.on(signal, () => {
+            logger.info({signal}, 'received termination signal')
+        })
+        }
 }
 
 const startServer = async(): Promise<void> => {
