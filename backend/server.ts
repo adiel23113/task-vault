@@ -1,11 +1,10 @@
 
-import {logger} from "./src/utils/logger.js";
+import {logger} from "@utils/logger.js";
 import {createServer} from 'node:http';
-import {connectDb, disconnectDb} from './src/config/db.js';
-import {env} from "./src/config/env.js";
-import { app } from './src/app.js';
-import {promise} from "zod/v3";
-import delay from 'node:timers/promises'
+import {connectDb} from '@config/db.js';
+import {env} from "@config/env.js";
+import { app } from '@app';
+import {setTimeout as delay} from 'node:timers/promises'
 
 
 const listen_errors: Readonly<Record<string, string>> = {
@@ -81,3 +80,5 @@ try {
     logger.fatal({ err }, 'failed to start server');
     process.exit(1);
 }
+
+
