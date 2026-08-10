@@ -1,7 +1,7 @@
 
 import {logger} from "@utils/logger.js";
 import {createServer} from 'node:http';
-import {connectDb} from '@config/db.js';
+import {connectDb, disconnectDb} from '@config/db.js';
 import {env} from "@config/env.js";
 import { app } from '@app';
 import {setTimeout as delay} from 'node:timers/promises'
@@ -20,7 +20,7 @@ const drain_delay = env.isProduction?5_000:0
 
 let isShuttingDown = false
 let server: ReturnType<typeof createServer>| null = null;
-
+ const closeHttpServer = ()
 const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
     if(isShuttingDown) return
     isShuttingDown = true
@@ -35,6 +35,10 @@ const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
         logger.info({drainDelay: drain_delay}, 'draining before closinf listener')
         await delay(drain_delay)
     }
+     const steps:ReadonlyArray<readonly [label:string,close:()=> Promise<void>]=[
+         ['http server',closeHttpServer],
+         ['database connection',disconnectDb()]
+     ]
 }
 
 const attachProcessHandlers = (): void => {
@@ -70,6 +74,7 @@ const startServer = async(): Promise<void> => {
 
     })
     await new Promise<void>(resolve => {
+
         httpServer.listen(env.PORT, resolve)
     })
 }
