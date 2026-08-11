@@ -1,12 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2025",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "lib": ["ES2025"],
     "types": ["node"],
+
     "rootDir": "./",
     "outDir": "./dist",
+
+    "baseUrl": ".",
     "paths": {
       "@app": ["./src/app.ts"],
       "@modules/*": ["./src/modules/*"],
@@ -17,6 +20,7 @@
       "@dts/*": ["./src/types/*"],
       "@utils/*": ["./src/utils/*"]
     },
+
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "isolatedModules": true,
@@ -27,6 +31,7 @@
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true
   },
-  "include": ["server.ts","src/**/*"],
+
+  "include": ["server.ts", "src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
