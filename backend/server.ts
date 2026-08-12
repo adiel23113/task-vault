@@ -48,10 +48,19 @@ const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
         logger.info({drainDelay: drain_delay}, 'draining before closinf listener')
         await delay(drain_delay)
     }
-     const steps:ReadonlyArray<readonly [label:string,close:()=> Promise<void>]=[
+     const steps:ReadonlyArray<readonly [label:string,close:()=> Promise<void>]>=[
          ['http server',closeHttpServer],
-         ['database connection',disconnectDb()]
+         ['database connection',disconnectDb]
      ]
+     let cleanupFailed = false 
+     for (const [lavel, close] of steps)
+        try{
+    await close()
+    } catch(err){
+        cleanupFailed = true
+        logger.error({err},`failed to close${lavel}`)
+    }
+    clearTimeout(forceTimer)
 }
 
 const attachProcessHandlers = (): void => {
