@@ -20,10 +20,11 @@ const drain_delay = env.isProduction?5_000:0
 const logFlushTimeOut = 500
 
 let isShuttingDown = false
-let server: ReturnType<typeof createServer>| null = null;
+let server: ReturnType<typeof createServer>| null = null
+let pendingExitCode = 0
 
 
-const exitAfterFlush = async (code: number): Promise<never> => {
+const exitAfterFlush = async (code: number): Promise<never> => { 
   await Promise.race([
     new Promise<void>(resolve => {
       logger.flush(() => resolve())
@@ -74,6 +75,7 @@ const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
         logger.error({err},`failed to close${lavel}`)
     }
     clearTimeout(forceTimer)
+    await exitAfterFlush(cleanupFailed? 1: pendingExitCode)
 }
 
 const attachProcessHandlers = (): void => {
