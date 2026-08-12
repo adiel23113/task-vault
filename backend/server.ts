@@ -20,7 +20,20 @@ const drain_delay = env.isProduction?5_000:0
 
 let isShuttingDown = false
 let server: ReturnType<typeof createServer>| null = null;
- const closeHttpServer = ()
+
+const closeHttpServer = async (): Promise<void> => {
+    const activeServer = server
+
+    if (!activeServer?.listening) return
+
+    activeServer.closeIdleConnections()
+
+    await new Promise<void>((resolve, reject) => {
+        activeServer.close(err => (err ? reject(err) : resolve()))
+    })
+
+    logger.info('http server closed')
+}
 const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
     if(isShuttingDown) return
     isShuttingDown = true
