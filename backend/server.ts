@@ -87,8 +87,16 @@ const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
 const attachProcessHandlers = (): void => {
     const onFatal = (reason: string, level: 'fatal' | 'error') =>
         (err: unknown): void => {
+        try {
+
             logger[level]({err}, `${reason} - initiating shutdown`)
-        }
+        } catch{
+      try {
+          logger[level](`${reason} - initiating shutdown`)
+      } catch {}
+
+        } }
+
     process.on('uncaughtException', onFatal('uncaughtException', 'fatal'))
     process.on('unhandledRejection', onFatal('unhandledRejection', 'error'))
 
