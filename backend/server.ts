@@ -49,7 +49,13 @@ const closeHttpServer = async (): Promise<void> => {
     logger.info('http server closed')
 }
 const shutdown = async (reason: string, exitCode =0): Promise<void> =>{
-    if(isShuttingDown) return
+    if(exitCode !== 0 && pendingExitCode === 0) pendingExitCode = exitCode
+    if(isShuttingDown) {
+        if (exitCode !== 0){
+            logger.error({reason,exitCode},'fatal error during shutdown')
+        }
+        return
+    }
     isShuttingDown = true
     logger.info({reason,exitCode},'shutting down gracefully')
 
