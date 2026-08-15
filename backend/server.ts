@@ -5,6 +5,7 @@ import {connectDb, disconnectDb} from '@config/db.js';
 import {env} from "@config/env.js";
 import { app } from '@app';
 import {setTimeout as delay} from 'node:timers/promises'
+import type {Server} from "node:net";
 
 
 const listen_errors: Readonly<Record<string, string>> = {
@@ -107,6 +108,11 @@ const attachProcessHandlers = (): void => {
         })
         }
 }
+
+const listen = (httpServer: Server, port: number):Promise<void> =>
+    new Promise<void>((resolve,reject)=>{
+        httpServer.once('error',reject)
+    })
 
 const startServer = async(): Promise<void> => {
     await connectDb()
