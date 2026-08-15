@@ -133,6 +133,18 @@ const startServer = async(): Promise<void> => {
         logger.fatal({err, ...(listenError && {port: env.PORT})}, listenError ? `port ${env.PORT}
          ${listenError}` : 'server encountered a fatal error')
 
+        logger.info({
+            port: env.PORT,
+            env: env.NODE_ENV,
+            pid: process.pid,
+            node: process.version
+        }, 'server started')
+        if(env.isDevelopment){
+            const baseUrl = `http://localhost:${env.PORT}`;
+
+            logger.info({ api: `${baseUrl}/api/v1`, health: `${baseUrl}/health` }, 'Local endpoints');
+        }
+
     })
     await new Promise<void>(resolve => {
 
@@ -143,6 +155,7 @@ const startServer = async(): Promise<void> => {
 try {
     await startServer();
 } catch (err) {
+    const code = (err as NodeJS.ErrnoException | null)?.code??''
     logger.fatal({ err }, 'failed to start server');
     process.exit(1);
 }
