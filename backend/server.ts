@@ -112,6 +112,10 @@ const attachProcessHandlers = (): void => {
 const listen = (httpServer: Server, port: number):Promise<void> =>
     new Promise<void>((resolve,reject)=>{
         httpServer.once('error',reject)
+        httpServer.listen(port,()=>{
+        httpServer.removeListener("error",reject)
+            resolve()
+        })
     })
 
 const startServer = async(): Promise<void> => {
