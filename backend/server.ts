@@ -12,6 +12,14 @@ const request_timeout = 300_000;
 
 let shuttingDown = false;
 let server: Server | null = null;
+let httpClosePromise: Promise<void> | null = null
+const closeHttpServer = async (): Promise<void>=>{
+    if(httpClosePromise)return httpClosePromise
+    const activeServer = server
+    if(!activeServer?.listening)return
+      
+
+}
 const listen = (httpServer: Server,port: number)=>
     new Promise<void>((resolve, reject)=>{
         httpServer.once('error',reject)
@@ -34,4 +42,6 @@ const startServer = async (): Promise<void> => {
     httpServer.keepAliveTimeout = keep_alive_timeout;
     httpServer.headersTimeout = headers_timeout;
     httpServer.requestTimeout = request_timeout;
+    if(shuttingDown) return
+    await listen(httpServer,env.PORT)
 };
