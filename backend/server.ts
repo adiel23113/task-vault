@@ -1,5 +1,5 @@
 import { connectDb } from "@config/db.js";
-import { createServer, type Server } from "node:net";
+import { createServer, type Server } from "node:http";
 import { app } from "@app";
 import {promise} from "zod/v3";
 import {resolve} from "node:dns";
@@ -10,10 +10,12 @@ const connections_checking_interval = 5_000;
 const keep_alive_timeout = 65_000;
 const headers_timeout = 30_000;
 const request_timeout = 300_000;
+const idle_sweep_interval = 1_000
 
 let shuttingDown = false;
 let server: Server | null = null;
 let httpClosePromise: Promise<void> | null = null
+
 const closeHttpServer = async (): Promise<void> => {
     if (httpClosePromise) return httpClosePromise
     const activeServer = server
@@ -24,10 +26,16 @@ const closeHttpServer = async (): Promise<void> => {
         const idleSweeper = setInterval(() => {
             activeServer.closeIdleConnections()
         }, idle_sweep_interval)
-
+try {
+    await new Promise<void> ((resolve,reject) =>{
+        activeServer.close(err =>(err? reject(err):resolve()))
+    })
+}finally {
+    clearInterval(idleSweeper)
+}
+        logger.info("http server closed")
     })()
 }
-      
 
 const listen = (httpServer: Server,port: number)=>
     new Promise<void>((resolve, reject)=> {
@@ -51,5 +59,10 @@ const startServer = async (): Promise<void> => {
     httpServer.headersTimeout = headers_timeout;
     httpServer.requestTimeout = request_timeout;
     if(shuttingDown) return
-    await listen(httpServer,env.PORT)
+    const pendinglisten = (listenPromise = listenServer(httpServer,env.PORT))
+    try {
+        await pendinglisten
+    } finally {
+        if(listenPromise = pendinglisten) listenPromise
+    }
 };
