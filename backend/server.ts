@@ -4,7 +4,7 @@ import { app } from "@app";
 import {setInterval} from "node:timers";
 import { env } from "@config/env.js";
 import { logger } from "@utils/logger.js";
-import {set} from "zod";
+
 
 const connections_checking_interval = 5_000;
 const keep_alive_timeout = 65_000;
@@ -74,6 +74,13 @@ export const startServer = async (): Promise<void> => {
     try {
         await pendinglisten
     } finally {
-        if(listenPromise = pendinglisten) listenPromise
+        if(listenPromise === pendingListen) listenPromise = null
+        }
+    if (shuttingDown){
+        await closeHttpServer()
+        return
     }
-};
+    httpServer.on('error',(err: NodeJS.ErrnoException) =>{
+        logCrashSafely()
+    })
+}
