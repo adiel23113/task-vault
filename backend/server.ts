@@ -4,6 +4,7 @@ import { app } from "@app";
 import {setInterval} from "node:timers";
 import { env } from "@config/env.js";
 import { logger } from "@utils/logger.js";
+import {levels} from "pino";
 
 
 const connections_checking_interval = 5_000;
@@ -18,6 +19,22 @@ let httpClosePromise: Promise<void> | null = null;
 let listenPromise: Promise<void> | null = null;
 let pendingExitCode = 0;
 let drainController: AbortController | null = null;
+
+const logCrashSafely = (
+    level: 'fatal' | 'error',
+    bindings: Record<string, unknown>,
+    message: string
+): void => {
+    try {
+        logger[level](bindings, message)
+    } catch {
+        try {
+            logger[level](`${message} error details unserializable`)
+        } catch {
+            console.error()
+        }
+    }
+}
 
 export const closeHttpServer = async (): Promise<void> => {
     if (httpClosePromise) return httpClosePromise;
