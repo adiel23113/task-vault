@@ -4,7 +4,8 @@ import { app } from "@app";
 import {setInterval} from "node:timers";
 import { env } from "@config/env.js";
 import { logger } from "@utils/logger.js";
-import {levels} from "pino";
+import { setTimeout as delay } from 'node:timers/promises'
+import { listenServer } from "@utils/http.server.js";
 
 
 const connections_checking_interval = 5_000;
@@ -12,6 +13,7 @@ const keep_alive_timeout = 65_000;
 const headers_timeout = 30_000;
 const request_timeout = 300_000;
 const idle_sweep_interval = 1_000
+const drainDelay = env.isProduction ? 5_000 : 0
 
 let shuttingDown = false;
 let server: Server | null = null;
@@ -85,6 +87,25 @@ const shutdown = async (reason: string, exitCode: number): Promise<void> => {
         }
         return
     }
+    shuttingDown = true
+    logger.info({reason, exitCode}, 'shutting down')
+    if (pendingExitCode === 0 && drainDelay > 0) {
+        logger.info({drainDelay: drainDelay}, 'draining before closing listener')
+        drainController = new AbortController()
+        try {
+            await delay(drainDelay, undefined, {signal: drainController.signal})
+        } catch (err) {
+            if (!drainController.signal.aborted) throw err
+        } finally {
+            drainController = null
+        }
+    }
+    if (pendingExitCode !== 0) server?.closeAllConnections()
+
+    const steps: ReadonlyArray<readonly [label: string, close: () => Promise<void>]> = [
+        ['HTTP server', closeHttpServer],
+        ['database connection', disconnectDb],
+    ];
 }
 export const startServer = async (): Promise<void> => {
     await connectDb();
