@@ -74,6 +74,18 @@ export const closeHttpServer = async (): Promise<void> => {
             resolve();
         });
     });
+const shutdown = async (reason: string, exitCode: number): Promise<void> => {
+    if (exitCode !== 0 && pendingExitCode === 0) pendingExitCode = exitCode
+
+    if (shuttingDown) {
+        if (exitCode !== 0) {
+            drainController?.abort()
+            server?.closeAllConnections()
+            logger.error({reason, exitCode}, 'fatal error during shutdown')
+        }
+        return
+    }
+}
 export const startServer = async (): Promise<void> => {
     await connectDb();
     if (shuttingDown) return;
@@ -98,6 +110,6 @@ export const startServer = async (): Promise<void> => {
         return
     }
     httpServer.on('error',(err: NodeJS.ErrnoException) =>{
-        logCrashSafely()
+        logCrashSafely('fatal', {err}, 'server encountered a fatal error')
     })
 }
