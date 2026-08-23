@@ -1,7 +1,7 @@
 import { connectDb } from "@config/db.js";
 import { createServer, type Server } from "node:http";
 import { app } from "@app";
-import {setInterval} from "node:timers";
+import {clearTimeout, setInterval} from "node:timers";
 import { env } from "@config/env.js";
 import { logger } from "@utils/logger.js";
 import { setTimeout as delay } from 'node:timers/promises'
@@ -14,6 +14,7 @@ const headers_timeout = 30_000;
 const request_timeout = 300_000;
 const idle_sweep_interval = 1_000
 const drainDelay = env.isProduction ? 5_000 : 0
+const shutdownTimeout = 35_000
 
 let shuttingDown = false;
 let server: Server | null = null;
@@ -91,7 +92,7 @@ const shutdown = async (reason: string, exitCode: number): Promise<void> => {
     logger.info({reason, exitCode}, 'shutting down')
     if (pendingExitCode === 0 && drainDelay > 0) {
         logger.info({drainDelay: drainDelay}, 'draining before closing listener')
-        drainController = new AbortController()
+        drainController =`` new AbortController()
         try {
             await delay(drainDelay, undefined, {signal: drainController.signal})
         } catch (err) {
@@ -106,6 +107,23 @@ const shutdown = async (reason: string, exitCode: number): Promise<void> => {
         ['HTTP server', closeHttpServer],
         ['database connection', disconnectDb],
     ];
+
+    const forceTimer = setTimeout(()=>{
+        server?.closeAllConnections();
+        try {
+            logger.error({timeoutMs: shutdownTimeout},'Graceful shutdown time out, forcing')
+        }catch {}
+    },shutdownTimeout)
+    for (const [label,close] of steps) {
+        try {
+            await close();
+
+        }catch (err){
+            pendingExitCode = 1;
+            logger.error({err},`failed to close ${label}`)
+        }
+    }
+    clearTimeout(forceTimer)
 }
 export const startServer = async (): Promise<void> => {
     await connectDb();
