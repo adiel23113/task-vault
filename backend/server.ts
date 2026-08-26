@@ -1,4 +1,4 @@
-import { connectDb } from "@config/db.js";
+import { connectDb ,disconnectDb} from "@config/db.js";
 import { createServer, type Server } from "node:http";
 import { app } from "@app";
 import {clearTimeout, setInterval} from "node:timers";
@@ -15,11 +15,13 @@ const request_timeout = 300_000;
 const idle_sweep_interval = 1_000
 const drainDelay = env.isProduction ? 5_000 : 0
 const shutdownTimeout = 35_000
+const logFlushTimeout = 500
 
 let shuttingDown = false;
 let server: Server | null = null;
 let httpClosePromise: Promise<void> | null = null;
 let listenPromise: Promise<void> | null = null;
+let exitPromise: Promise<never> | null = null;
 let pendingExitCode = 0;
 let drainController: AbortController | null = null;
 
@@ -75,8 +77,18 @@ export const closeHttpServer = async (): Promise<void> => {
         httpServer.listen(port, () => {
             httpServer.removeListener("error", reject);
             resolve();
-        });
-    });
+        })
+    })
+
+const initiateShutdown = (reason : string, exitCode :number): void =>{
+     void shutdown (reason, exitCode).catch((err:unknown)=>{
+         pendingExitCode = 1
+         drainController?.abort()
+         server?.closeAllConnections()
+         logCrashSafely('fatal',{err,reason},'shutdown failed')
+         void exitAfterFlush(1)
+     })
+}
 const shutdown = async (reason: string, exitCode: number): Promise<void> => {
     if (exitCode !== 0 && pendingExitCode === 0) pendingExitCode = exitCode
 
@@ -92,13 +104,13 @@ const shutdown = async (reason: string, exitCode: number): Promise<void> => {
     logger.info({reason, exitCode}, 'shutting down')
     if (pendingExitCode === 0 && drainDelay > 0) {
         logger.info({drainDelay: drainDelay}, 'draining before closing listener')
-        drainController =`` new AbortController()
+        drainController = new AbortController()
         try {
             await delay(drainDelay, undefined, {signal: drainController.signal})
         } catch (err) {
             if (!drainController.signal.aborted) throw err
         } finally {
-            drainController = null
+                  drainController = null
         }
     }
     if (pendingExitCode !== 0) server?.closeAllConnections()
@@ -125,6 +137,20 @@ const shutdown = async (reason: string, exitCode: number): Promise<void> => {
     }
     clearTimeout(forceTimer)
 }
+
+const exitAfterFlush = (code: number): Promise<never> => {
+    if (code !== 0) pendingExitCode = code
+    exitPromise ??= (async (): Promise<never> => {
+        await Promise.race([
+            new Promise<void>((resolve) => {
+                logger.flush(() => resolve());
+            }),
+            delay(logFlushTimeout),
+        ]).catch(() => undefined)
+        process.exit(pendingExitCode)
+    })()
+    return exitPromise
+}
 export const startServer = async (): Promise<void> => {
     await connectDb();
     if (shuttingDown) return;
@@ -138,9 +164,9 @@ export const startServer = async (): Promise<void> => {
     httpServer.headersTimeout = headers_timeout;
     httpServer.requestTimeout = request_timeout;
     if(shuttingDown) return
-    const pendinglisten = (listenPromise = listenServer(httpServer,env.PORT))
+    const pendingListen = (listenPromise = listenServer(httpServer,env.PORT))
     try {
-        await pendinglisten
+        await pendingListen
     } finally {
         if(listenPromise === pendingListen) listenPromise = null
         }
