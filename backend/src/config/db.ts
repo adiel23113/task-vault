@@ -1,4 +1,5 @@
 import * as mongoose from "mongoose";
+import {env} from "@config/env.js";
 
 
 
@@ -8,6 +9,14 @@ let hasEstablishedClient = false
 
 const isDbConnected = (): boolean =>
     mongoose.connection.readyState === mongoose.ConnectionStates.connected
+
+const openConnection = async (): Promise<void> => {
+    try {
+        await mongoose.connect(env.MONGODB_URI);
+    } catch {
+        throw new Error('failed to establish mongodb connection');
+    }
+}
 
 export const connectDb = async (): Promise<void> =>{
     if(closingPromise){
