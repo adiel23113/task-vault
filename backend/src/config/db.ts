@@ -1,14 +1,25 @@
 import * as mongoose from "mongoose";
 import {env} from "@config/env.js";
+import type {ConnectOptions} from "mongoose";
+import {service_name} from "@shared/identity.js";
 
 
 
 let closingPromise: Promise<void> | null = null
 let connectionPromise : Promise<void> | null = null
 let hasEstablishedClient = false
-
+const pool_checkout_timeout = 2_000
 const isDbConnected = (): boolean =>
     mongoose.connection.readyState === mongoose.ConnectionStates.connected
+
+
+const connection_options: ConnectOptions = {
+    appName: service_name,
+    maxPoolSize: env.isProduction ? 100 : 10,
+    minPoolSize: env.isProduction ? 5 : 0,
+    maxIdleTimeMS: 60_000,
+    waitQueueTimeoutMS: pool_checkout_timeout
+}
 
 const openConnection = async (): Promise<void> => {
     try {
