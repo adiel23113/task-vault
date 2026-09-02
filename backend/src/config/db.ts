@@ -18,7 +18,16 @@ const connection_options: ConnectOptions = {
     maxPoolSize: env.isProduction ? 100 : 10,
     minPoolSize: env.isProduction ? 5 : 0,
     maxIdleTimeMS: 60_000,
-    waitQueueTimeoutMS: pool_checkout_timeout
+    waitQueueTimeoutMS: pool_checkout_timeout,
+    connectTimeoutMS: 10_000,
+    socketTimeoutMS: 45_000,
+    retryWrites : true,
+    retryReads: true,
+    compressors: ["zlib"],
+    zlibCompressionLevel : 6,
+    autoIndex: !env.isProduction,
+    autoCreate: !env.isProduction,
+    bufferCommands : false,
 }
 
 const openConnection = async (): Promise<void> => {
