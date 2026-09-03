@@ -47,4 +47,4 @@ export const connectDb = async (): Promise<void> =>{
     if (hasEstablishedClient){
         throw new Error('mongodb Connection is temporarily unavailable')
     }
-}
+} akdsgasjdgfsaldfksdaka
