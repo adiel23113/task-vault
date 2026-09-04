@@ -9,6 +9,10 @@ let closingPromise: Promise<void> | null = null
 let connectionPromise : Promise<void> | null = null
 let hasEstablishedClient = false
 const pool_checkout_timeout = 2_000
+const server_selection_timeout = env.isProduction? 15_000 : 5_000
+const query_timeout = 12_000
+
+
 const isDbConnected = (): boolean =>
     mongoose.connection.readyState === mongoose.ConnectionStates.connected
 
@@ -28,11 +32,17 @@ const connection_options: ConnectOptions = {
     autoIndex: !env.isProduction,
     autoCreate: !env.isProduction,
     bufferCommands : false,
+    ...(env.isProduction && {
+        writeConcern : {
+            w:'majority'as const,
+            wtimeoutMS:query_timeout
+        }
+    })
 }
 
 const openConnection = async (): Promise<void> => {
     try {
-        await mongoose.connect(env.MONGODB_URI);
+        await mongoose.connect(env.MONGODB_URI, connection_options);
     } catch {
         throw new Error('failed to establish mongodb connection');
     }
@@ -47,4 +57,5 @@ export const connectDb = async (): Promise<void> =>{
     if (hasEstablishedClient){
         throw new Error('mongodb Connection is temporarily unavailable')
     }
-} akdsgasjdgfsaldfksdaka
+    const attempt= (connectionPromise = openConnection())
+} 
