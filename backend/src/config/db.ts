@@ -108,5 +108,24 @@ export const connectDb = async (): Promise<void> =>{
     if (hasEstablishedClient){
         throw new Error('mongodb Connection is temporarily unavailable')
     }
-    const attempt= (connectionPromise = openConnection())
-} 
+
+  const attempt = (connectionPromise = openConnection())
+  const clearThisAttempt = (): void => {
+    if (connectionPromise === attempt) connectionPromise = null
+  }
+  void attempt.then(clearThisAttempt, clearThisAttempt)
+  return attempt
+}
+
+const closeConnection = async (): Promise<void> => {
+  const pending = connectionPromise
+  connectionPromise = null
+  if (pending) await pending.catch(() => undefined)
+  await mongoose.connection.close()
+  logger.info('mongodb cleanup completed')
+}
+
+export const disconnectDb = async (): Promise<void> => {
+  if (closingPromise) return closingPromise
+  const closeAttempt = (closingPromise = Promise.resolve().then(closeConnection))
+}
