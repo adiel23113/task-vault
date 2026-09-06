@@ -74,11 +74,28 @@ const openConnection = async (): Promise<void> => {
 
 if(env.isProduction){
     try{
+        await assertTransactionTopology()
+    
 
-    } catch() { 
+    } catch(err) { 
+        await discardClient()
+        throw err
 
     }
-}}
+}
+hasEstablishedClient = true 
+const {host, name} = mongoose.connection
+logger.info({
+    host,
+    database: name ,
+    poolSize: connection_options.maxPoolSize,
+    pool_checkout_timeout : pool_checkout_timeout,
+    server_selection_timeout : server_selection_timeout,
+    query_timeout : query_timeout,
+    autoIndex: connection_options.autoIndex
+
+},'mongodb connected')
+}
 
 
 
