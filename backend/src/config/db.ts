@@ -47,11 +47,20 @@ const discardClient = async (): Promise<void> => {
   } catch (err) {
     logger.error({ err }, 'mongodb failed connect cleanup error');
   }
-};
+}
 
 
-const assertTransactionTopology = async (): Promise<void> =>{
-    let hello: Record<string, unknown> | undefined
+
+const assertTransactionTopology = async (): Promise<void> => {
+  let hello: Record<string, unknown> | undefined
+  try {
+    hello = await mongoose.connection.db?.admin()
+      .command({hello: 1}, {timeoutMS: server_selection_timeout})
+  } catch {
+    throw new Error('failed to verify the mongodb deployment topology')
+  }
+  if (hello?.setName || hello?.msg === 'isdbgrid') return
+throw new Error('Production MongoDB must be a replica set or a sharded cluster — a standalone server cannot run the transactions this service depends on')
 }
 
 const openConnection = async (): Promise<void> => {
