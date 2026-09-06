@@ -41,15 +41,6 @@ const connection_options: ConnectOptions = {
     })
 }
 
-const openConnection = async (): Promise<void> => {
-    try {
-        await mongoose.connect(env.MONGODB_URI, connection_options);
-    } catch {
-        throw new Error('failed to establish mongodb connection');
-    }
-}
-
-
 const discardClient = async (): Promise<void> => {
   try {
     await mongoose.connection.close();
@@ -57,6 +48,18 @@ const discardClient = async (): Promise<void> => {
     logger.error({ err }, 'mongodb failed connect cleanup error');
   }
 };
+
+const openConnection = async (): Promise<void> => {
+    try {
+        await mongoose.connect(env.MONGODB_URI, connection_options);
+    } catch {
+        await discardClient()
+        throw new Error('failed to establish mongodb connection');
+    }
+}
+
+
+
 
 export const connectDb = async (): Promise<void> =>{
     if(closingPromise){
