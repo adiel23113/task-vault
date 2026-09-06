@@ -49,6 +49,11 @@ const discardClient = async (): Promise<void> => {
   }
 };
 
+
+const assertTransactionTopology = async (): Promise<void> =>{
+    let hello: Record<string, unknown> | undefined
+}
+
 const openConnection = async (): Promise<void> => {
     try {
         await mongoose.connect(env.MONGODB_URI, connection_options);
@@ -56,8 +61,15 @@ const openConnection = async (): Promise<void> => {
         await discardClient()
         throw new Error('failed to establish mongodb connection');
     }
-}
 
+
+if(env.isProduction){
+    try{
+
+    } catch() { 
+
+    }
+}}
 
 
 
