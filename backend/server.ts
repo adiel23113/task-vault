@@ -6,6 +6,7 @@ import { env } from "@config/env.js";
 import { logger } from "@utils/logger.js";
 import { setTimeout as delay } from 'node:timers/promises'
 import { listenServer } from "@utils/http.server.js";
+import { isShuttingDown } from "@shared/lifecycle.js";
 
 
 const connections_checking_interval = 5_000;
@@ -14,10 +15,13 @@ const headers_timeout = 30_000;
 const request_timeout = 300_000;
 const idle_sweep_interval = 1_000
 const drainDelay = env.isProduction ? 5_000 : 0
-const shutdownTimeout = 35_000
+const cleanup_margin = 15_000
+const request_tail = request_timeout + Math.max(connections_checking_interval, api_timeout)
+const shutdownTimeout = request_tail + cleanup_margin
 const logFlushTimeout = 500
+const terminationDeadline = drainDelay + shutdownTimeout + logFlushTimeout
 
-let shuttingDown = false;
+
 let server: Server | null = null;
 let httpClosePromise: Promise<void> | null = null;
 let listenPromise: Promise<void> | null = null;
@@ -25,8 +29,13 @@ let exitPromise: Promise<never> | null = null;
 let pendingExitCode = 0;
 let drainController: AbortController | null = null;
 
-const logCrashSafely = (
-    level: 'fatal' | 'error',
+const abortGracefulShutdown = (): void =>{
+    drainController?.abort()
+    server?.closeAllConnections()
+}
+
+const logSafely = (
+    level: 'fatal' | 'error'| 'warn'|'info',
     bindings: Record<string, unknown>,
     message: string
 ): void => {
@@ -85,14 +94,14 @@ const initiateShutdown = (reason : string, exitCode :number): void =>{
          pendingExitCode = 1
          drainController?.abort()
          server?.closeAllConnections()
-         logCrashSafely('fatal',{err,reason},'shutdown failed')
+         logSafely('fatal',{err,reason},'shutdown failed')
          void exitAfterFlush(1)
      })
 }
 const shutdown = async (reason: string, exitCode: number): Promise<void> => {
     if (exitCode !== 0 && pendingExitCode === 0) pendingExitCode = exitCode
 
-    if (shuttingDown) {
+    if (isShuttingDown()) {
         if (exitCode !== 0) {
             drainController?.abort()
             server?.closeAllConnections()
@@ -175,6 +184,6 @@ export const startServer = async (): Promise<void> => {
         return
     }
     httpServer.on('error',(err: NodeJS.ErrnoException) =>{
-        logCrashSafely('fatal', {err}, 'server encountered a fatal error')
+        logSafely('fatal', {err}, 'server encountered a fatal error')
     })
-}
+} 
